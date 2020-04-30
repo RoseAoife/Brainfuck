@@ -1,6 +1,6 @@
 (ns brainfuck.engine
   "Engine for Clojure interpreter.
-  
+
    Champlain College
    CSI-380 Spring 2019"
   (:gen-class)
@@ -8,24 +8,43 @@
             [brainfuck.utils :refer [inc-byte dec-byte]]))
 
 (defn tokenize
-  "Tokenize the given code: return a vector of tokens, where each token is a 
+  "Tokenize the given code: return a vector of tokens, where each token is a
   map with the following entries
     :symbol the symbol (character)
     :line the line number the token is on (starting at 1)
     :column the column in the line the token is on (starting at 1)
-  
+
   Note: for efficiency the only tokens that should be returned are those containing
   valid (augmented) brainfuck symbols: > < + - . , * [ ]
   "
   [code]
-  ;; Code goes here
-  nil
-  )
+  (into []
+    (flatten
+      (map-indexed
+       (fn [line_num line]
+         (keep-indexed
+           (fn [column_num char]
+             (if (case char
+                   \> \>,
+                   \< \<,
+                   \+ \+,
+                   \- \-,
+                   \. \.,
+                   \, \*,
+                   \* \*,
+                   \[ \[,
+                   \] \],
+                   nil)
+               {:symbol char :line (+ line_num 1) :column (+ column_num 1)}
+              nil))
+          line))
+  (str/split code #"\n"))))
+)
 
 (defn find-matchings
   "Parse the given tokens returning a map that contains an entry for every [ and ]
   mapping its index in the given tokens to it matching symbol and vice-versa.
-  
+
   throws a RuntimeException any unmatched [ or ]
   The RuntimeException's message will have a useful message including the line and column
   that the error occurred.
@@ -35,14 +54,14 @@
        nodes '()
        stack '()
        matchings {}]
-       
+
     (if (>= index (count tokens))
       (if (not-empty stack)
         (let [node (:node (peek stack))]
             (throw (RuntimeException. (str "Unmatched [ at " (:line node) ":" (:column node)))))
         matchings)
       (let [node (nth tokens index)]
-        (cond 
+        (cond
           (= (node :symbol) \[)
             (recur (inc index) (conj nodes node) (conj stack {:node node :index index}) matchings)
           (= (node :symbol) \])
@@ -51,13 +70,13 @@
                 (recur (inc index) (conj nodes node) (pop stack) (assoc matchings match index index match)))
               (throw (RuntimeException. (str "Unmatched ] at " (:line node) ":" (:column node)))))
           :else (recur (inc index) (conj nodes node) stack matchings))))))
-          
+
 
 (defn interpret
   "Interpret the given instructions (tokens) with the given matchings map
    that maps the index of each [ and ] to the index of its matching symbol.
-   
-   Reads from *in* (stdin) and prints the output to *out* (stdout; default behavior of print), 
+
+   Reads from *in* (stdin) and prints the output to *out* (stdout; default behavior of print),
    returns the final state of the
    machine, a map with
     :data the current data cells (a map from indices to byte values)
@@ -76,14 +95,35 @@
        (let [instruction (nth instructions instruction-pointer)
              symbol  (instruction :symbol)
              datum (data data-pointer 0)]
-        (cond 
-          ;; Code goes here
-          
-          ;; you implement other cases
-          
+        (cond
+          (= symbol \>) (recur data (inc data-pointer) (inc instruction-pointer))
+
+          (= symbol \<) (if (= data-pointer 0)
+                          (throw (RuntimeException. "Error: data pointer can not be less than 0"))
+                          (recur data (dec data-pointer) (inc instruction-pointer))
+                        )
+
+          (= symbol \+) (recur (assoc data data-pointer (inc-byte datum)) data-pointer (inc instruction-pointer))
+
+          (= symbol \-) (recur (assoc data data-pointer (dec-byte datum)) data-pointer (inc instruction-pointer))
+
+          (= symbol \.) (do
+                          (print (char datum))
+                          (recur data data-pointer (inc instruction-pointer))
+                        )
+
+          (= symbol \[) (if (= datum 0)
+                          (recur data data-pointer (inc (matchings instruction-pointer)))
+                          (recur data data-pointer (inc instruction-pointer))
+                        )
+
+          (= symbol \]) (if (not= datum 0)
+                          (recur data data-pointer (inc (matchings instruction-pointer)))
+                          (recur data data-pointer (inc instruction-pointer))
+                        )
           ;; we are providing the input case for you
           (or (= symbol \,) (= symbol \*))
-            ;; accept one byte of input, storing its value in the byte at the data pointer. 
+            ;; accept one byte of input, storing its value in the byte at the data pointer.
             (let [input (.read *in*)]
               (recur (assoc data data-pointer input) data-pointer (inc instruction-pointer)))
 

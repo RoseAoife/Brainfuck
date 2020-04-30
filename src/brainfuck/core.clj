@@ -5,7 +5,7 @@
    Or, from the REPL/other code: (bf valid brainfuck code)
 
    See: https://en.wikipedia.org/wiki/Brainfuck for details
-   
+
    Note: to make our bf macro work, we augment the language by considering
    * to be equivalent to , and any code using the bf macro must use *s instead
    of ,s since the Clojure reader treats ,s as whitespace
@@ -14,19 +14,18 @@
    CSI-380 Spring 2019"
   (:gen-class)
   (:require [brainfuck.engine :refer [tokenize interpret find-matchings]]))
-  
+
 
 (defmacro code-to-string
   "Return a string containing the given raw code
-  
+
   Ex (code-to-string + - + < >) -> \"+-+<>\"
-  
+
   Whether the string contains whitespace is optional.
   "
   [first & rest]
-  ;; code goes here
-  nil
-  )
+  (clojure.string/join (conj rest first))
+)
 
 (defmacro bf
    "Run the given raw code"
@@ -34,7 +33,7 @@
    `(run (code-to-string ~@code)))
 
 (defn run
-  "Run the given code, where code is a string" 
+  "Run the given code, where code is a string"
   [code]
   (let [tokens (tokenize code)]
     (interpret tokens (find-matchings tokens))))
@@ -46,7 +45,7 @@
 
 (defn -main
   "Usage: lein run [-- src ...]
-  
+
   Run given brainfuck src files or run example programs if no src provided.
   "
   [& args]
@@ -55,15 +54,15 @@
     (doseq [arg args] (run-source arg))
     (do
       ;; hello world!
-      (bf ++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>  ->> + [ < ]<-]>>.>---.+  +  +  
+      (bf ++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>  ->> + [ < ]<-]>>.>---.+  +  +
           cool stuff, eh?
           ++++..+++.>>.<-.<.+++.------.--------.>>+.>++.)
-   
+
       (with-in-str "this will be \"catted\"\n"
         (bf -*+[-.*+]))
-  
+
       (bf     the following will print the first 11 fibonacci numbers!
-          
+
         +++++++++++ number of digits to output
         > 1
         + initial number
@@ -134,8 +133,8 @@
           [>>+>+<<<-]>>>[<<<+>>>-]<<[<+>-]>[<+>-]<<<-
         ])
   ))
-  
-  
+
+
   ;; always print two new lines for clean output
   (print "\n\n")
 )
